@@ -1,4 +1,5 @@
-use std::process::{Command};
+use std::process::Command;
+use std::io::{self,Write};
 
 fn main() {
     let git_head_name = Command::new("git").args(["symbolic-ref", "HEAD"]).output().expect("Couldn't run symb-refs");
@@ -12,13 +13,16 @@ fn main() {
         return
     }
     if vector_branch[2] != "development" && vector_branch[2] != "main" && !vector_branch[2].is_empty() {
+        let mut stdout = io::stdout().lock();
         let existing_task = Command::new("task").args([format!("proj:{}", &basename_string.trim()).as_str(), format!("+{}", &vector_branch[2]).as_str(), format!("prio:{}", &vector_branch[2]).as_str(), format!("/{}/", &vector_branch[3]).as_str(), "list"]).output().expect("Couldn't run the list task command");
         if !existing_task.status.success() {
             println!("There is no task, making a new one");
             let new_task = Command::new("task").args(["add", format!("proj:{}", &basename_string.trim()).as_str(), format!("+{}" ,&vector_branch[2]).as_str(), format!("prio:{}", &vector_branch[2]).as_str(), &vector_branch[3]]).output().expect("Couldn't run add task command");
-            println!("{:?}", new_task);
+            stdout.write_all(&new_task.stdout).expect("Couldn't write to stdout new task");
+            if !&new_task.stderr.is_empty() {
+                stdout.write_all(&new_task.stderr).expect("Couldn't write to std err");
+            }
         }
-        println!("{:?}", existing_task);
+        stdout.write_all(&existing_task.stdout).expect("Couldn't write to stdout");
     }
-    println!("Vec branch is {:?}", vector_branch);
 }
